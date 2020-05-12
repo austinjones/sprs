@@ -1880,7 +1880,7 @@ where
     }
 }
 
-macro_rules! sparse_scalar_mul {
+macro_rules! sparse_scalar_ops {
     ($scalar: ident) => {
         impl<'a, I, Iptr, IpStorage, IStorage, DStorage> Mul<$scalar>
             for &'a CsMatBase<$scalar, I, IpStorage, IStorage, DStorage, Iptr>
@@ -1897,17 +1897,65 @@ macro_rules! sparse_scalar_mul {
                 binop::scalar_mul_mat(self, rhs)
             }
         }
+
+        impl<'a, I, Iptr, IpStorage, IStorage, DStorage> Mul<$scalar>
+            for CsMatBase<$scalar, I, IpStorage, IStorage, DStorage, Iptr>
+        where
+            I: 'a + SpIndex,
+            Iptr: 'a + SpIndex,
+            IpStorage: 'a + Deref<Target = [Iptr]>,
+            IStorage: 'a + Deref<Target = [I]>,
+            DStorage: 'a + Deref<Target = [$scalar]>,
+        {
+            type Output = CsMatI<$scalar, I, Iptr>;
+
+            fn mul(self, rhs: $scalar) -> CsMatI<$scalar, I, Iptr> {
+                binop::scalar_mul_mat(&self, rhs)
+            }
+        }
+
+        impl<'a, I, Iptr, IpStorage, IStorage, DStorage> Add<$scalar>
+            for &'a CsMatBase<$scalar, I, IpStorage, IStorage, DStorage, Iptr>
+        where
+            I: 'a + SpIndex,
+            Iptr: 'a + SpIndex,
+            IpStorage: 'a + Deref<Target = [Iptr]>,
+            IStorage: 'a + Deref<Target = [I]>,
+            DStorage: 'a + Deref<Target = [$scalar]>,
+        {
+            type Output = CsMatI<$scalar, I, Iptr>;
+
+            fn add(self, rhs: $scalar) -> CsMatI<$scalar, I, Iptr> {
+                binop::scalar_add_mat(self, rhs)
+            }
+        }
+
+        impl<'a, I, Iptr, IpStorage, IStorage, DStorage> Add<$scalar>
+            for CsMatBase<$scalar, I, IpStorage, IStorage, DStorage, Iptr>
+        where
+            I: 'a + SpIndex,
+            Iptr: 'a + SpIndex,
+            IpStorage: 'a + Deref<Target = [Iptr]>,
+            IStorage: 'a + Deref<Target = [I]>,
+            DStorage: 'a + Deref<Target = [$scalar]>,
+        {
+            type Output = CsMatI<$scalar, I, Iptr>;
+
+            fn add(self, rhs: $scalar) -> CsMatI<$scalar, I, Iptr> {
+                binop::scalar_add_mat(&self, rhs)
+            }
+        }
     };
 }
 
-sparse_scalar_mul!(u32);
-sparse_scalar_mul!(i32);
-sparse_scalar_mul!(u64);
-sparse_scalar_mul!(i64);
-sparse_scalar_mul!(isize);
-sparse_scalar_mul!(usize);
-sparse_scalar_mul!(f32);
-sparse_scalar_mul!(f64);
+sparse_scalar_ops!(u32);
+sparse_scalar_ops!(i32);
+sparse_scalar_ops!(u64);
+sparse_scalar_ops!(i64);
+sparse_scalar_ops!(isize);
+sparse_scalar_ops!(usize);
+sparse_scalar_ops!(f32);
+sparse_scalar_ops!(f64);
 
 impl<'a, 'b, N, I, Iptr, IpS1, IS1, DS1, IpS2, IS2, DS2>
     Mul<&'b CsMatBase<N, I, IpS2, IS2, DS2, Iptr>>
@@ -1945,6 +1993,78 @@ where
                     .transpose_into()
             }
         }
+    }
+}
+
+impl<'a, N, I, Iptr, IpS1, IS1, DS1, IpS2, IS2, DS2>
+    Mul<CsMatBase<N, I, IpS2, IS2, DS2, Iptr>>
+    for &'a CsMatBase<N, I, IpS1, IS1, DS1, Iptr>
+where
+    N: 'a + Copy + Num + Default + std::ops::AddAssign,
+    I: 'a + SpIndex,
+    Iptr: 'a + SpIndex,
+    IpS1: 'a + Deref<Target = [Iptr]>,
+    IS1: 'a + Deref<Target = [I]>,
+    DS1: 'a + Deref<Target = [N]>,
+    IpS2: Deref<Target = [Iptr]>,
+    IS2: Deref<Target = [I]>,
+    DS2: Deref<Target = [N]>,
+{
+    type Output = CsMatI<N, I, Iptr>;
+
+    fn mul(
+        self,
+        rhs: CsMatBase<N, I, IpS2, IS2, DS2, Iptr>,
+    ) -> CsMatI<N, I, Iptr> {
+        Mul::mul(self, &rhs)
+    }
+}
+
+impl<'b, N, I, Iptr, IpS1, IS1, DS1, IpS2, IS2, DS2>
+    Mul<&'b CsMatBase<N, I, IpS2, IS2, DS2, Iptr>>
+    for CsMatBase<N, I, IpS1, IS1, DS1, Iptr>
+where
+    N: Copy + Num + Default + std::ops::AddAssign,
+    I: SpIndex,
+    Iptr: SpIndex,
+    IpS1: Deref<Target = [Iptr]>,
+    IS1: Deref<Target = [I]>,
+    DS1: Deref<Target = [N]>,
+    IpS2: 'b + Deref<Target = [Iptr]>,
+    IS2: 'b + Deref<Target = [I]>,
+    DS2: 'b + Deref<Target = [N]>,
+{
+    type Output = CsMatI<N, I, Iptr>;
+
+    fn mul(
+        self,
+        rhs: &'b CsMatBase<N, I, IpS2, IS2, DS2, Iptr>,
+    ) -> CsMatI<N, I, Iptr> {
+        Mul::mul(&self, rhs)
+    }
+}
+
+impl<'b, N, I, Iptr, IpS1, IS1, DS1, IpS2, IS2, DS2>
+    Mul<CsMatBase<N, I, IpS2, IS2, DS2, Iptr>>
+    for CsMatBase<N, I, IpS1, IS1, DS1, Iptr>
+where
+    N: Copy + Num + Default + std::ops::AddAssign,
+    I: SpIndex,
+    Iptr: SpIndex,
+    IpS1: Deref<Target = [Iptr]>,
+    IS1: Deref<Target = [I]>,
+    DS1: Deref<Target = [N]>,
+    IpS2: Deref<Target = [Iptr]>,
+    IS2: Deref<Target = [I]>,
+    DS2: Deref<Target = [N]>,
+{
+    type Output = CsMatI<N, I, Iptr>;
+
+    fn mul(
+        self,
+        rhs: CsMatBase<N, I, IpS2, IS2, DS2, Iptr>,
+    ) -> CsMatI<N, I, Iptr> {
+        Mul::mul(&self, &rhs)
     }
 }
 

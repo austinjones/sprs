@@ -70,6 +70,18 @@ where
     mat.map(|&x| x * val)
 }
 
+/// Sparse matrix addition with a scalar
+pub fn scalar_add_mat<N, I, Iptr, Mat>(mat: &Mat, val: N) -> CsMatI<N, I, Iptr>
+where
+    N: Num + Copy,
+    I: SpIndex,
+    Iptr: SpIndex,
+    Mat: SpMatView<N, I, Iptr>,
+{
+    let mat = mat.view();
+    mat.map(|&x| x + val)
+}
+
 /// Applies a binary operation to matching non-zero elements
 /// of two sparse matrices. When e.g. only the `lhs` has a non-zero at a
 /// given location, `0` is inferred for the non-zero value of the other matrix.
